@@ -1,5 +1,4 @@
-poisson
-threads
+build/*
 
 *.aux
 *.log
