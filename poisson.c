@@ -34,6 +34,7 @@
  * multithreading (see also threads.c which is reference by the lab notes).
  */
 
+#define IJK_TO_INDEX(n, i, j, k) (i + j*n + k*n*n)
 
 // Global flag
 // set to true when operating in debug mode to enable verbose logging
@@ -72,6 +73,62 @@ double* poisson_neumann(int n, double *source, int iterations, int threads, floa
     }
 
     // TODO: solve Poisson's equation for the given inputs
+    for (int iters = 0; iters < iterations; iters++) {
+      for (int k = 0; k < n; k++) {
+        for (int j = 0; j < n; j++) {
+          for (int i = 0; i < n; i++) {
+            int i_p, i_n;
+            int j_p, j_n;
+            int k_p, k_n;
+
+            if (i == 0) {
+              i_p = i + 1;
+              i_n = i + 1;
+            } else if (i == n - 1) {
+              i_p = i - 1;
+              i_n = i - 1;
+            } else {
+              i_p = i - 1;
+              i_n = i + 1;
+            }
+
+            if (j == 0) {
+              j_p = j + 1;
+              j_n = j + 1;
+            } else if (j == n - 1) {
+              j_p = j - 1;
+              j_n = j - 1;
+            } else {
+              j_p = j - 1;
+              j_n = j + 1;
+            }
+
+            if (k == 0) {
+              k_p = k + 1;
+              k_n = k + 1;
+            } else if (k == n - 1) {
+              k_p = k - 1;
+              k_n = k - 1;
+            } else {
+              k_p = k - 1;
+              k_n = k + 1;
+            }
+
+            next[IJK_TO_INDEX(n, i, j, k)] =
+                (1.0 / 6.0) * (curr[IJK_TO_INDEX(n, i_n, j, k)] +
+                curr[IJK_TO_INDEX(n, i_p, j, k)] +
+                curr[IJK_TO_INDEX(n, i, j_n, k)] +
+                curr[IJK_TO_INDEX(n, i, j_p, k)] +
+                curr[IJK_TO_INDEX(n, i, j, k_n)] +
+                curr[IJK_TO_INDEX(n, i, j, k_p)] +
+                -delta * delta * source[IJK_TO_INDEX(n, i, j, k)]);
+          }
+        }
+      }
+      double* p = curr;
+      curr = next;
+      next = p;
+    }
 
     // Free one of the buffers and return the correct answer in the other.
     // The caller is now responsible for free'ing the returned pointer.
@@ -83,8 +140,6 @@ double* poisson_neumann(int n, double *source, int iterations, int threads, floa
 
     return curr;
 }
-
-
 
 int main(int argc, char **argv) {
 
