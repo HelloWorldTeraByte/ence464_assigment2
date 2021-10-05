@@ -72,7 +72,6 @@ double* poisson_neumann(int n, double *source, int iterations, int threads, floa
         exit(EXIT_FAILURE);
     }
 
-    // TODO: solve Poisson's equation for the given inputs
     for (int iters = 0; iters < iterations; iters++) {
       for (int k = 0; k < n; k++) {
         for (int j = 0; j < n; j++) {
@@ -115,17 +114,18 @@ double* poisson_neumann(int n, double *source, int iterations, int threads, floa
             }
 
             next[IJK_TO_INDEX(n, i, j, k)] =
-                (1.0 / 6.0) * (curr[IJK_TO_INDEX(n, i_n, j, k)] +
-                curr[IJK_TO_INDEX(n, i_p, j, k)] +
-                curr[IJK_TO_INDEX(n, i, j_n, k)] +
-                curr[IJK_TO_INDEX(n, i, j_p, k)] +
-                curr[IJK_TO_INDEX(n, i, j, k_n)] +
-                curr[IJK_TO_INDEX(n, i, j, k_p)] +
-                -delta * delta * source[IJK_TO_INDEX(n, i, j, k)]);
+                (1.0 / 6.0) *
+                (curr[IJK_TO_INDEX(n, i_n, j, k)] +
+                 curr[IJK_TO_INDEX(n, i_p, j, k)] +
+                 curr[IJK_TO_INDEX(n, i, j_n, k)] +
+                 curr[IJK_TO_INDEX(n, i, j_p, k)] +
+                 curr[IJK_TO_INDEX(n, i, j, k_n)] +
+                 curr[IJK_TO_INDEX(n, i, j, k_p)] +
+                 -delta * delta * source[IJK_TO_INDEX(n, i, j, k)]);
           }
         }
       }
-      double* p = curr;
+      double *p = curr;
       curr = next;
       next = p;
     }
