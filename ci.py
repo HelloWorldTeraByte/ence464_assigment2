@@ -4,14 +4,14 @@ import os
 
 build_dir = 'build/'
 
-vers = 4
-test_ver = 4
+vers = 6
+test_ver = 6
 n = 51
 iters = 300
 
 test = True
 benchmark = False
-#benchmark = True
+benchmark = True
 
 def Test():
   print('-' * 50)
