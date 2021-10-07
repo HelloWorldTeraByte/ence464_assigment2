@@ -34,15 +34,7 @@
  * multithreading (see also threads.c which is reference by the lab notes).
  */
 
-//#define IJK_TO_INDEX(n, i, j, k) (i + j*n + k*n*n)
 #define IJK_TO_INDEX(n, i, j, k) (((k) * n + j) * n + i)
-
-#define CURR(n, i, j, k, i_p, i_n, j_p, j_n, k_p, k_n)                    \
-  ((1.0 / 6.0) *                                                          \
-   (curr[IJK_TO_INDEX(n, i_n, j, k)] + curr[IJK_TO_INDEX(n, i_p, j, k)] + \
-    curr[IJK_TO_INDEX(n, i, j_n, k)] + curr[IJK_TO_INDEX(n, i, j_p, k)] + \
-    curr[IJK_TO_INDEX(n, i, j, k_n)] + curr[IJK_TO_INDEX(n, i, j, k_p)] + \
-    -delta * delta * source[IJK_TO_INDEX(n, i, j, k)]))
 
 #define CALC(n, i, j, k, i_p, i_n, j_p, j_n, k_p, k_n)                       \
   next[IJK_TO_INDEX(n, i, j, k)] =                                           \
@@ -86,6 +78,7 @@ double* poisson_neumann(int n, double *source, int iterations, int threads, floa
         fprintf(stderr, "Error: ran out of memory when trying to allocate %i sized cube\n", n);
         exit(EXIT_FAILURE);
     }
+
     int i = 0;
     int j = 0;
     int k = 0;
@@ -111,23 +104,13 @@ double* poisson_neumann(int n, double *source, int iterations, int threads, floa
       j = 0;
       CALC(n, i, j, k, i - 1, i - 1, j + 1, j + 1, k + 1, k + 1);
 
-      // Bottom plane left middle
-      i = 0;
+      // Bottom plane middle + bottom plane left & right middle
       for (int j = 1; j < n - 1; j++) {
-        CALC(n, i, j, k, i + 1, i + 1, j - 1, j + 1, k + 1, k + 1);
-      }
-
-      // Bottom plane middle
-      for (int j = 1; j < n - 1; j++) {
+        CALC(n, 0, j, k, 1, 1, j - 1, j + 1, k + 1, k + 1);
         for (int i = 1; i < n - 1; i++) {
           CALC(n, i, j, k, i - 1, i + 1, j - 1, j + 1, k + 1, k + 1);
         }
-      }
-
-      // Bottom plane right middle
-      i = n - 1;
-      for (int j = 1; j < n - 1; j++) {
-        CALC(n, i, j, k, i - 1, i - 1, j - 1, j + 1, k + 1, k + 1);
+        CALC(n, n - 1, j, k, n - 2, n - 2, j - 1, j + 1, k + 1, k + 1);
       }
 
       // Bottom plane bottom left corner
@@ -164,16 +147,13 @@ double* poisson_neumann(int n, double *source, int iterations, int threads, floa
         j = 0;
         CALC(n, i, j, k, i - 1, i - 1, j + 1, j + 1, k - 1, k + 1);
 
-        // Middle plane left middle
-        i = 0;
+        // No boundary conditions -> core + middle plane left and right middle
         for (int j = 1; j < n - 1; j++) {
-          CALC(n, i, j, k, i + 1, i + 1, j - 1, j + 1, k - 1, k + 1);
-        }
-
-        // Middle plane right middle
-        i = n - 1;
-        for (int j = 1; j < n - 1; j++) {
-          CALC(n, i, j, k, i - 1, i - 1, j - 1, j + 1, k - 1, k + 1);
+          CALC(n, 0, j, k, 1, 1, j - 1, j + 1, k - 1, k + 1);
+          for (int i = 1; i < n - 1; i++) {
+            CALC(n, i, j, k, i - 1, i + 1, j - 1, j + 1, k - 1, k + 1);
+          }
+          CALC(n, n - 1, j, k, n - 2, n - 2, j - 1, j + 1, k - 1, k + 1);
         }
 
         // Middle plane bottom left corner
@@ -192,15 +172,7 @@ double* poisson_neumann(int n, double *source, int iterations, int threads, floa
         j = n - 1;
         CALC(n, i, j, k, i - 1, i - 1, j - 1, j - 1, k - 1, k + 1);
 
-        // No boundary conditions -> core
-        for (int k = 1; k < n - 1; k++) {
-          for (int j = 1; j < n - 1; j++) {
-            for (int i = 1; i < n - 1; i++) {
-              CALC(n, i, j, k, i - 1, i + 1, j - 1, j + 1, k - 1, k + 1);
-            }
-          }
-        }
-      }
+     }
 
       i = 0;
       j = 0;
@@ -222,23 +194,14 @@ double* poisson_neumann(int n, double *source, int iterations, int threads, floa
       j = 0;
       CALC(n, i, j, k, i - 1, i - 1, j + 1, j + 1, k - 1, k - 1);
 
-      // Top plane left middle
-      i = 0;
-      for (int j = 1; j < n - 1; j++) {
-        CALC(n, i, j, k, i + 1, i + 1, j - 1, j + 1, k - 1, k - 1);
-      }
 
-      // Top plane middle
+      // Top plane middle + top plane left & right middle
       for (int j = 1; j < n - 1; j++) {
+        CALC(n, 0, j, k, 1, 1, j - 1, j + 1, k - 1, k - 1);
         for (int i = 1; i < n - 1; i++) {
           CALC(n, i, j, k, i - 1, i + 1, j - 1, j + 1, k - 1, k - 1);
         }
-      }
-
-      // Top plane right middle
-      i = n - 1;
-      for (int j = 1; j < n - 1; j++) {
-        CALC(n, i, j, k, i - 1, i - 1, j - 1, j + 1, k - 1, k - 1);
+        CALC(n, n - 1, j, k, n - 2, n - 2, j - 1, j + 1, k - 1, k - 1);
       }
 
       // Top plane bottom left corner
@@ -276,7 +239,7 @@ double* poisson_neumann(int n, double *source, int iterations, int threads, floa
 int main(int argc, char **argv) {
   // default settings for solver
   int iterations = 10;
-  int n = 51;
+  int n = 5;
   int threads = 1;
   float delta = 1;
 
