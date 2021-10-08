@@ -5,20 +5,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #define IJK_TO_INDEX(n, i, j, k) (((k)*n + j) * n + i)
 
 #define CALC(n, i, j, k, i_p, i_n, j_p, j_n, k_p, k_n)                       \
-  next[IJK_TO_INDEX(n, i, j, k)] =                                           \
+  args->next[IJK_TO_INDEX(n, i, j, k)] =                                           \
       (1.0 / 6.0) *                                                          \
-      (curr[IJK_TO_INDEX(n, i_n, j, k)] + curr[IJK_TO_INDEX(n, i_p, j, k)] + \
-       curr[IJK_TO_INDEX(n, i, j_n, k)] + curr[IJK_TO_INDEX(n, i, j_p, k)] + \
-       curr[IJK_TO_INDEX(n, i, j, k_n)] + curr[IJK_TO_INDEX(n, i, j, k_p)] + \
-       -delta * delta * source[IJK_TO_INDEX(n, i, j, k)]);
+      (args->curr[IJK_TO_INDEX(n, i_n, j, k)] + args->curr[IJK_TO_INDEX(n, i_p, j, k)] + \
+       args->curr[IJK_TO_INDEX(n, i, j_n, k)] + args->curr[IJK_TO_INDEX(n, i, j_p, k)] + \
+       args->curr[IJK_TO_INDEX(n, i, j, k_n)] + args->curr[IJK_TO_INDEX(n, i, j, k_p)] + \
+       -args->delta * args->delta * args->source[IJK_TO_INDEX(n, i, j, k)]);
 
 // Global flag
 // set to true when operating in debug mode to enable verbose logging
 static bool debug = false;
+
+pthread_barrier_t barrier;
 
 typedef struct {
   int thread_id;
@@ -34,18 +37,14 @@ typedef struct {
 
 void* bottom_middle_planes(void* pargs) {
   worker_args* args = (worker_args*)pargs;
-
-  double* curr = args->curr;
-  double* next = args->next;
-  double* source = args->source;
-  double delta = args->delta;
   int n = args->n;
-  int iterations = args->iters;
+  int n_2 = args->n - 2;
+  int n_1 = args->n - 1;
 
-  int n_2 = n - 2;
-  int n_1 = n - 1;
-
-  for (int iters = 0; iters < iterations; iters++) {
+  for (int iters = 0; iters < args->iters; iters++) {
+    if (debug) {
+      printf("Bottom middle planes %d to %d; thread: %d; iters: %d\n", args->start_plane, args->end_plane, args->thread_id, iters);
+    }
     // Bottom plane top left corner
     CALC(n, 0, 0, 0, 1, 1, 1, 1, 1, 1);
 
@@ -76,6 +75,8 @@ void* bottom_middle_planes(void* pargs) {
 
     // Bottom plane bottom right corner
     CALC(n, n_1, n_1, 0, n_2, n_2, n_2, n_2, 1, 1);
+
+    if (debug) printf("Bottom plane computed: %d\n", 0);
 
     // Middle planes
     for (int k = 1; k < args->end_plane; k++) {
@@ -109,30 +110,31 @@ void* bottom_middle_planes(void* pargs) {
 
       // Middle plane bottom right corner
       CALC(n, n_1, n_1, k, n_2, n_2, n_2, n_2, k - 1, k + 1);
+
+      if (debug) printf("Bottom middle plane computed: %d\n", k);
     }
 
-    double* p = curr;
-    curr = next;
-    next = p;
+    pthread_barrier_wait(&barrier);
+
+    double* p = args->curr;
+    args->curr = args->next;
+    args->next = p;
   }
 
   return NULL;
 }
 
-void* top_middle_planes(void* pargs) {
+void* middle_planes(void* pargs) {
   worker_args* args = (worker_args*)pargs;
 
-  double* curr = args->curr;
-  double* next = args->next;
-  double* source = args->source;
-  double delta = args->delta;
   int n = args->n;
-  int iterations = args->iters;
+  int n_2 = args->n - 2;
+  int n_1 = args->n - 1;
 
-  int n_2 = n - 2;
-  int n_1 = n - 1;
-
-  for (int iters = 0; iters < iterations; iters++) {
+  for (int iters = 0; iters < args->iters; iters++) {
+    if (debug) {
+      printf("Middle planes %d to %d; thread: %d; iters: %d\n", args->start_plane, args->end_plane, args->thread_id, iters);
+    }
     // Middle planes
     for (int k = args->start_plane; k < args->end_plane; k++) {
       // Middle plane top left corner
@@ -165,6 +167,64 @@ void* top_middle_planes(void* pargs) {
 
       // Middle plane bottom right corner
       CALC(n, n_1, n_1, k, n_2, n_2, n_2, n_2, k - 1, k + 1);
+
+      if (debug) printf("Middle plane computed: %d\n", k);
+    }
+
+    pthread_barrier_wait(&barrier);
+
+    double* p = args->curr;
+    args->curr = args->next;
+    args->next = p;
+  }
+
+  return NULL;
+}
+
+void* top_middle_planes(void* pargs) {
+  worker_args* args = (worker_args*)pargs;
+  int n = args->n;
+  int n_2 = args->n - 2;
+  int n_1 = args->n - 1;
+
+  for (int iters = 0; iters < args->iters; iters++) {
+    if (debug) {
+      printf("Top middle planes %d to %d; thread: %d; iters: %d\n", args->start_plane, args->end_plane, args->thread_id, iters);
+    }
+    // Middle planes
+    for (int k = args->start_plane; k < args->end_plane - 1; k++) {
+      // Middle plane top left corner
+      CALC(n, 0, 0, k, 1, 1, 1, 1, k - 1, k + 1);
+
+      // Middle plane top middle
+      for (int i = 1; i < n_1; i++) {
+        CALC(n, i, 0, k, i - 1, i + 1, 1, 1, k - 1, k + 1);
+      }
+
+      // Middle plane top right corner
+      CALC(n, n_1, 0, k, n_2, n_2, 1, 1, k - 1, k + 1);
+
+      // No boundary conditions -> core + middle plane left and right middle
+      for (int j = 1; j < n_1; j++) {
+        CALC(n, 0, j, k, 1, 1, j - 1, j + 1, k - 1, k + 1);
+        for (int i = 1; i < n_1; i++) {
+          CALC(n, i, j, k, i - 1, i + 1, j - 1, j + 1, k - 1, k + 1);
+        }
+        CALC(n, n_1, j, k, n_2, n_2, j - 1, j + 1, k - 1, k + 1);
+      }
+
+      // Middle plane bottom left corner
+      CALC(n, 0, n_1, k, 1, 1, n_2, n_2, k - 1, k + 1);
+
+      // Middle plane bottom middle
+      for (int i = 1; i < n_1; i++) {
+        CALC(n, i, n_1, k, i - 1, i + 1, n_2, n_2, k - 1, k + 1);
+      }
+
+      // Middle plane bottom right corner
+      CALC(n, n_1, n_1, k, n_2, n_2, n_2, n_2, k - 1, k + 1);
+
+      if (debug) printf("Top middle plane computed: %d\n", k);
     }
 
     // Top plane top left corner
@@ -198,65 +258,13 @@ void* top_middle_planes(void* pargs) {
     // Top plane bottom right corner
     CALC(n, n_1, n_1, n_1, n_2, n_2, n_2, n_2, n_2, n_2);
 
-    double* p = curr;
-    curr = next;
-    next = p;
-  }
+    if (debug) printf("Top plane computed: %d\n", n - 1);
 
-  return NULL;
-}
+    pthread_barrier_wait(&barrier);
 
-void* middle_planes(void* pargs) {
-  worker_args* args = (worker_args*)pargs;
-
-  double* curr = args->curr;
-  double* next = args->next;
-  double* source = args->source;
-  double delta = args->delta;
-  int n = args->n;
-  int iterations = args->iters;
-
-  int n_2 = n - 2;
-  int n_1 = n - 1;
-
-  for (int iters = 0; iters < iterations; iters++) {
-    // Middle planes
-    for (int k = args->start_plane; k < args->end_plane; k++) {
-      // Middle plane top left corner
-      CALC(n, 0, 0, k, 1, 1, 1, 1, k - 1, k + 1);
-
-      // Middle plane top middle
-      for (int i = 1; i < n_1; i++) {
-        CALC(n, i, 0, k, i - 1, i + 1, 1, 1, k - 1, k + 1);
-      }
-
-      // Middle plane top right corner
-      CALC(n, n_1, 0, k, n_2, n_2, 1, 1, k - 1, k + 1);
-
-      // No boundary conditions -> core + middle plane left and right middle
-      for (int j = 1; j < n_1; j++) {
-        CALC(n, 0, j, k, 1, 1, j - 1, j + 1, k - 1, k + 1);
-        for (int i = 1; i < n_1; i++) {
-          CALC(n, i, j, k, i - 1, i + 1, j - 1, j + 1, k - 1, k + 1);
-        }
-        CALC(n, n_1, j, k, n_2, n_2, j - 1, j + 1, k - 1, k + 1);
-      }
-
-      // Middle plane bottom left corner
-      CALC(n, 0, n_1, k, 1, 1, n_2, n_2, k - 1, k + 1);
-
-      // Middle plane bottom middle
-      for (int i = 1; i < n_1; i++) {
-        CALC(n, i, n_1, k, i - 1, i + 1, n_2, n_2, k - 1, k + 1);
-      }
-
-      // Middle plane bottom right corner
-      CALC(n, n_1, n_1, k, n_2, n_2, n_2, n_2, k - 1, k + 1);
-    }
-
-    double* p = curr;
-    curr = next;
-    next = p;
+    double* p = args->curr;
+    args->curr = args->next;
+    args->next = p;
   }
 
   return NULL;
@@ -297,6 +305,8 @@ double* poisson_neumann(int n, double* source, int iterations, int threads_num,
             n);
     exit(EXIT_FAILURE);
   }
+
+  pthread_barrier_init(&barrier, NULL, threads_num);
 
   pthread_t threads[threads_num];
   worker_args args[threads_num];
@@ -354,7 +364,7 @@ double* poisson_neumann(int n, double* source, int iterations, int threads_num,
   // Fill in the arguments to the worker
   args[threads_num - 1].thread_id = threads_num - 1;
   args[threads_num - 1].start_plane = start_plane;
-  args[threads_num - 1].end_plane = n + 1;
+  args[threads_num - 1].end_plane = n;
   args[threads_num - 1].n = n;
   args[threads_num - 1].iters = iterations;
   args[threads_num - 1].curr = curr;
@@ -370,9 +380,9 @@ double* poisson_neumann(int n, double* source, int iterations, int threads_num,
   }
 
   // Wait for all the threads to finish using join()
-  for (int i = 0; i < threads_num; i++) {
+  for (int i = 0; i < threads_num; ++i) {
     pthread_join(threads[i], NULL);
-    printf("%d joined", i);
+    if (debug) printf("%d joined\n", i);
   }
 
   // Free one of the buffers and return the correct answer in the other.
