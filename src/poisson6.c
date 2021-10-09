@@ -306,12 +306,15 @@ double* poisson_neumann(int n, double* source, int iterations, int threads_num,
     exit(EXIT_FAILURE);
   }
 
+  if (threads_num > n) threads_num = n;
+
   pthread_barrier_init(&barrier, NULL, threads_num);
 
   pthread_t threads[threads_num];
   worker_args args[threads_num];
 
-  int plane_spacing = ((n - 1) + (threads_num - 1)) / threads_num;
+  // int plane_spacing = ((n - 1) + (threads_num - 1)) / threads_num;
+  int plane_spacing = (n + 1) / threads_num;
 
   int start_plane = 0;
   int end_plane = 0;
@@ -399,7 +402,7 @@ double* poisson_neumann(int n, double* source, int iterations, int threads_num,
 int main(int argc, char** argv) {
   // default settings for solver
   int iterations = 10;
-  int n = 15;
+  int n = 7;
   int threads = 4;
   float delta = 1;
 
