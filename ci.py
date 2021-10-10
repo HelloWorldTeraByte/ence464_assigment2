@@ -2,6 +2,7 @@ import subprocess
 import time
 import os
 import matplotlib.pyplot as plt
+import copy
 
 build_dir = 'build/'
 
@@ -16,13 +17,7 @@ iters = [30, 100, 300, 500]
 
 ns_results = []
 iters_results = []
-
 opt_results = []
-
-opt_results_ox = []
-opt_results_o1 = []
-opt_results_o2 = []
-opt_results_o3 = []
 
 test = False
 benchmark = True
@@ -30,9 +25,9 @@ plot = True
 
 
 def Test():
-  print('-' * 50)
+  print('-' * 80)
   print('Testing: poision' + str(test_ver))
-  print('-' * 50)
+  print('-' * 80)
 
   r = os.system('./' + build_dir + 'poisson' + str(test_ver) + ' -n 7' +
                 ' -i 300 ' + ' | cmp reference/7.txt > /dev/null')
@@ -59,6 +54,9 @@ def Test():
 
 
 def Benchmark():
+  print('-' * 80)
+  print('Benchmarking different cube sizes')
+  print('-' * 80)
   for ver in range(1, vers + 1):
     r = []
     for n in ns:
@@ -67,10 +65,13 @@ def Benchmark():
                       '-i', str(const_iters)], stdout=subprocess.DEVNULL)
       time_delta = (time.time() - start_time) * 1000
       r.append(time_delta)
-      print('Poisson', ver, ':', 'Cube Size', str(
-          n), ',', 'Run Time', time_delta, 'ms')
+      print('Poisson', ver, ':', 'Cube Size:', str(
+          n), ',', 'Run Time:', time_delta, 'ms')
     ns_results.append(r)
 
+  print('-' * 80)
+  print('Benchmarking different iterations')
+  print('-' * 80)
   for ver in range(1, vers + 1):
     r = []
     for iter in iters:
@@ -79,24 +80,30 @@ def Benchmark():
                       '-i', str(iter)], stdout=subprocess.DEVNULL)
       time_delta = (time.time() - start_time) * 1000
       r.append(time_delta)
-      print('Poisson', ver, ':', 'Iterations', str(
-          iter), ',', 'Run Time', time_delta, 'ms')
+      print('Poisson', ver, ':', 'Iterations:', str(
+          iter), ',', 'Run Time:', time_delta, 'ms')
     iters_results.append(r)
 
+  print('-' * 80)
+  print('Benchmarking different optimizations')
+  print('-' * 80)
   for ver in range(1, vers + 1):
     r = []
     for opts in range(0, 4):
-      start_time = time.time()
-      if(opts == 0):
-        subprocess.run(['./' + build_dir + 'poisson' + str(ver), '-n', str(const_n),
-                        '-i', str(const_iters)], stdout=subprocess.DEVNULL)
-      else:
-        subprocess.run(['./' + build_dir + 'poisson' + str(ver) + 'O' + str(opts), '-n', str(const_n),
-                        '-i', str(const_iters)], stdout=subprocess.DEVNULL)
-      time_delta = (time.time() - start_time) * 1000
-      print('Poisson', ver, ':', 'Opt', str(opts),
-            ',', 'Run Time', time_delta, 'ms')
-      r.append(time_delta)
+      its = []
+      for n in ns:
+        start_time = time.time()
+        if(opts == 0):
+          subprocess.run(['./' + build_dir + 'poisson' + str(ver), '-n', str(n),
+                          '-i', str(const_iters)], stdout=subprocess.DEVNULL)
+        else:
+          subprocess.run(['./' + build_dir + 'poisson' + str(ver) + 'O' + str(opts), '-n', str(n),
+                          '-i', str(const_iters)], stdout=subprocess.DEVNULL)
+        time_delta = (time.time() - start_time) * 1000
+        print('Poisson', ver, ':', 'Opt:', str(opts),
+              ',', 'n:', n, 'Run Time:', ',', time_delta, 'ms')
+        its.append(time_delta)
+      r.append(its)
     opt_results.append(r)
 
 
@@ -121,10 +128,10 @@ def Plot():
   ax2.set_ylabel('Time (ms)')
   ax2.legend(loc='upper left')
 
+  '''
   fig3, ax3 = plt.subplots()
-  print(opt_results_o1)
   for ver in range(1, vers + 1):
-    ax3.plot(range(0, 4), opt_results[ver-1], label='Poisson' + str(ver))
+    ax3.plot(opt_results[ver-1][:][3], label='Poisson' + str(ver))
 
   ax3.set_xticks([0, 1, 2, 3])
   ax3.set_title(
@@ -133,6 +140,18 @@ def Plot():
   ax3.set_ylabel('Time (ms)')
   #ax3.set_yscale('log')
   ax3.legend(loc='upper right')
+  '''
+
+  for ver in [1, 2, 5, 6]:
+    plt.figure()
+    for opt in range(0, 4):
+        plt.plot(ns, opt_results[ver - 1][opt], label='Poisson' +
+                 str(ver) + ' with Optimization O' + str(opt))
+    plt.title('Computation time of Poisson ' + str(ver) +
+              ' solver with different compiler optimizations')
+    plt.legend(loc='upper left')
+    plt.xlabel('Number of Sides [n]')
+    plt.ylabel('Time (ms)')
 
   plt.show()
 
