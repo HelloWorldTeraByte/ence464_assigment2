@@ -15,9 +15,12 @@ ns = [3, 7, 15, 51, 101]
 const_n = 51
 iters = [30, 100, 300, 500]
 
+threads_test = range(2, 100, 2)
+
 ns_results = []
 iters_results = []
 opt_results = []
+threads_results = []
 
 test = False
 benchmark = True
@@ -54,6 +57,21 @@ def Test():
 
 
 def Benchmark():
+  print('-' * 80)
+  print('Benchmarking number of threads')
+  print('-' * 80)
+  for t in threads_test:
+    s = 0
+    for i in range(0, 4):
+      start_time = time.time()
+      subprocess.run(['./' + build_dir + 'poisson6', '-n', str(const_n),
+                      '-i', str(const_iters), '-t', str(t)], stdout=subprocess.DEVNULL)
+      time_delta = (time.time() - start_time) * 1000
+      s += time_delta
+      if(i == 3):
+        threads_results.append(s/4)
+        print('Poisson6', ':', 'Threads', ':', str(t), 'Cube Size:', str(const_n), ',', 'Run Time Average:', s/4, 'ms')
+
   print('-' * 80)
   print('Benchmarking different cube sizes')
   print('-' * 80)
@@ -128,7 +146,6 @@ def Plot():
   ax2.set_ylabel('Time (ms)')
   ax2.legend(loc='upper left')
 
-  '''
   fig3, ax3 = plt.subplots()
   for ver in range(1, vers + 1):
     ax3.plot(opt_results[ver-1][:][3], label='Poisson' + str(ver))
@@ -140,7 +157,6 @@ def Plot():
   ax3.set_ylabel('Time (ms)')
   #ax3.set_yscale('log')
   ax3.legend(loc='upper right')
-  '''
 
   for ver in [1, 2, 5, 6]:
     plt.figure()
@@ -153,8 +169,14 @@ def Plot():
     plt.xlabel('Number of Sides [n]')
     plt.ylabel('Time (ms)')
 
-  plt.show()
+  fig4, ax4 = plt.subplots()
+  ax4.plot(threads_test ,threads_results)
 
+  ax4.set_title('Computation time of multithreaded Poisson solvers for different number of threads')
+  ax4.set_xlabel('Number of Threads')
+  ax4.set_ylabel('Time (ms)')
+
+  plt.show()
 
 if __name__ == '__main__':
   if(test):
