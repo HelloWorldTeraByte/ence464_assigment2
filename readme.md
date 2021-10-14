@@ -1,30 +1,22 @@
-
-ENCE461 Assignment 2 Template
-=============================
-
-See assignment instructions [here](doc/instructions.pdf)
+# Jacobi Relaxation Algorithms
 
 Contents
  - `doc/` - assignment instructions, lab notes, report template.
+ - `graphs/` - Generated graphs and figures
  - `reference/` - correct output for test comparison.
- - `poisson.c` - basic template to work from. Write your solution here.
- - `threads.c` - example on how to use POSIX thread library.
+ - `src/` - different Poisson solver implementations
+ - `ci.py` - Tester, timer, benchmarker and visualizer
+ - `Makefile` - Makefile to build everything
  - `test.sh` - automatic testing script.
 
 Building
 --------
-
-Build instructions are inside `poisson.c` and `threads.c`. You can automate this
-with makefiles if you want.
-
+Every algorithm implementation can be built running make in the root directory
 
 Testing
 -------
+All of the algorithms can be tested by running ci.py file. Make sure that the testing flag is enabled.
 
-Build your solution.
-
-Run `./test.sh`. *This scripts expects a `poisson` program to be present.*
-
-It will automatically run your solution for three cube sizes and compare the
-output against some correct reference files. **Do not edit these reference
-files!**
+Benchmarking
+-------
+Different benchmarks can be run from ci.py. Enable the benchmarks to be run by enabling the global flags.
