@@ -29,8 +29,8 @@ typedef struct {
   int end_plane;
   int n;
   int iters;
-  double* curr;
-  double* next;
+  double* restrict curr;
+  double* restrict next;
   double* source;
   double delta;
 } worker_args;
