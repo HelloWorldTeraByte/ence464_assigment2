@@ -62,6 +62,7 @@ void* bottom_middle_planes(void* pargs) {
       for (int i = 1; i < n_1; i++) {
         CALC(n, i, j, 0, i - 1, i + 1, j - 1, j + 1, 1, 1);
       }
+      != 
       CALC(n, n_1, j, 0, n_2, n_2, j - 1, j + 1, 1, 1);
     }
 

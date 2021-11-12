@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS=-pg -g -pthread
+CFLAGS=-pg -g -pthread -march=native
 BUILD_DIR=build
 SRC_DIR=src
 
